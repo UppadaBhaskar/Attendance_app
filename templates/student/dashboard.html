@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — SECE{% endblock %}
+{% block body %}
+<header class="top-bar">
+  <div class="brand">
+    <span class="logo-box small">🎓</span>
+    <div><strong>SECE</strong><br><span class="muted small">Attendance</span></div>
+  </div>
+  <div class="top-right">
+    <span class="muted small hide-mobile">{{ session.email }}</span>
+    <a href="{{ url_for('logout') }}" class="btn btn-ghost">Sign Out</a>
+  </div>
+</header>
+{% include '_flash.html' %}
+<main class="page">
+  <h2>Welcome, {{ session.name.split(' ')[0] }}</h2>
+  <p class="muted">Roll No: {{ session.roll_no }}</p>
+
+  {% if summary %}
+  <div class="stats-grid">
+    <div class="stat-card">
+      <p class="stat-label">Overall Attendance</p>
+      <p class="stat-value {% if summary.percent >= 75 %}text-green{% else %}text-red{% endif %}">{{ summary.percent }}%</p>
+      <p class="stat-sub">{{ summary.present }} / {{ summary.total }}</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">Faculty</p>
+      <p class="stat-value text-normal">{{ summary.faculty_name }}</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">Present</p>
+      <p class="stat-value text-green">{{ summary.present }}</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">Absent</p>
+      <p class="stat-value text-red">{{ summary.absent }}</p>
+    </div>
+  </div>
+
+  {% if summary.percent > 0 and summary.percent < 75 %}
+  <div class="alert alert-warning">Attendance is below 75%.</div>
+  {% endif %}
+
+  <div class="card">
+    <div class="card-header"><h3>Attendance by Faculty</h3></div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Faculty</th>
+          <th class="text-right">Total</th>
+          <th class="text-right">Attended</th>
+          <th class="text-right">Absent</th>
+          <th class="text-right">%</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>{{ summary.faculty_name }}</td>
+          <td class="text-right">{{ summary.total }}</td>
+          <td class="text-right text-green">{{ summary.present }}</td>
+          <td class="text-right text-red">{{ summary.absent }}</td>
+          <td class="text-right">
+            <strong class="{% if summary.percent >= 75 %}text-green{% else %}text-red{% endif %}">{{ summary.percent }}%</strong>
+          </td>
+          <td><a href="{{ url_for('student_detail') }}">Details</a></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card pad"><p class="muted">No faculty configured.</p></div>
+  {% endif %}
+</main>
+{% endblock %}

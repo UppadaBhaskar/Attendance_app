@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block body %}
+<header class="top-bar">
+  <div class="brand">
+    <span class="logo-box small">🎓</span>
+    <div>
+      <strong>SECE</strong>
+      <span class="muted small">Faculty Portal</span>
+    </div>
+  </div>
+  <div class="top-right">
+    <span class="muted small hide-mobile">{{ session.name }}</span>
+    <span class="muted small hide-mobile">{{ session.email }}</span>
+    <a href="{{ url_for('logout') }}" class="btn btn-ghost">Sign Out</a>
+  </div>
+</header>
+{% include '_flash.html' %}
+<main class="page">
+  {% block faculty_content %}{% endblock %}
+</main>
+{% endblock %}

@@ -1,0 +1,110 @@
+{% extends "faculty/layout.html" %}
+{% block faculty_content %}
+<h2>Faculty Dashboard</h2>
+<p class="muted">{{ faculty.name }}</p>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <p class="stat-label">Students</p>
+    <p class="stat-value">{{ student_count }}</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-label">Sessions</p>
+    <p class="stat-value">{{ session_count }}</p>
+    <p class="stat-sub">dates marked</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-label">Below 75%</p>
+    <p class="stat-value text-red">{{ shortage }}</p>
+  </div>
+</div>
+
+<section class="section-block" id="mark-attendance">
+  <h3>Mark Attendance</h3>
+  <form method="get" action="{{ url_for('faculty_dashboard') }}" class="card filter-row">
+    <label>Date</label>
+    <input type="date" name="date" value="{{ mark_date }}" max="{{ today }}" onchange="this.form.submit()">
+  </form>
+
+  <form method="post" id="attendance-form" action="{{ url_for('faculty_dashboard') }}">
+    <input type="hidden" name="mark_date" value="{{ mark_date }}">
+    <div class="quick-mark">
+      <span class="muted small">Mark all:</span>
+      <button type="button" class="btn btn-small btn-green" onclick="markAll('present')">Present</button>
+      <button type="button" class="btn btn-small btn-red" onclick="markAll('absent')">Absent</button>
+    </div>
+    <div class="card">
+      {% if students %}
+      <div class="student-list">
+        {% for s in students %}
+        <div class="student-row">
+          <div class="student-info">
+            <strong>{{ s.name }}</strong>
+            <span class="muted small mono">{{ s.roll_no }}</span>
+          </div>
+          <div class="mark-buttons">
+            <label class="mark-btn present {% if marks.get(s.id) == 'present' or s.id not in marks %}active{% endif %}">
+              <input type="radio" name="status_{{ s.id }}" value="present"
+                {% if marks.get(s.id) == 'present' or s.id not in marks %}checked{% endif %}> ✓
+            </label>
+            <label class="mark-btn absent {% if marks.get(s.id) == 'absent' %}active{% endif %}">
+              <input type="radio" name="status_{{ s.id }}" value="absent"
+                {% if marks.get(s.id) == 'absent' %}checked{% endif %}> ✗
+            </label>
+          </div>
+          <button
+            type="submit"
+            class="btn-icon"
+            title="Delete student"
+            formaction="{{ url_for('faculty_delete_student', student_id=s.id) }}"
+            formmethod="post"
+            onclick="return confirmDelete({{ s.name|tojson }});"
+          >🗑</button>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="form-footer">
+        <button type="submit" class="btn btn-primary">Save Attendance</button>
+      </div>
+      {% else %}
+      <p class="pad muted">No students registered yet.</p>
+      {% endif %}
+    </div>
+  </form>
+</section>
+
+<section class="section-block" id="reports">
+  <h3>Attendance Reports</h3>
+  <p class="muted small">Percentage only</p>
+  <div class="card">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Roll No</th>
+          <th class="text-right">Total</th>
+          <th class="text-right">Present</th>
+          <th class="text-right">Absent</th>
+          <th class="text-right">%</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in report %}
+        <tr>
+          <td>{{ row.student.name }}</td>
+          <td class="mono">{{ row.student.roll_no }}</td>
+          <td class="text-right">{{ row.total }}</td>
+          <td class="text-right text-green">{{ row.present }}</td>
+          <td class="text-right text-red">{{ row.absent }}</td>
+          <td class="text-right">
+            <strong class="{% if row.percent >= 75 %}text-green{% else %}text-red{% endif %}">{{ row.percent }}%</strong>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="muted">No students.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

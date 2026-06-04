@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Login — SECE{% endblock %}
+{% block body %}
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="logo-box">🎓</div>
+      <h1>SECE</h1>
+      <p class="muted">Attendance Management System</p>
+    </div>
+    {% include '_flash.html' %}
+    <form method="post" action="{{ url_for('login') }}">
+      <div class="role-tabs">
+        <label class="role-tab"><input type="radio" name="role" value="student" checked> Student</label>
+        <label class="role-tab"><input type="radio" name="role" value="faculty"> Faculty</label>
+      </div>
+      <label>Email</label>
+      <input type="email" name="email" required>
+      <label>Password</label>
+      <input type="password" name="password" required>
+      <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+    </form>
+    <p class="auth-footer">New student? <a href="{{ url_for('register') }}">Register</a></p>
+    <div class="sample-box">
+      <p class="small muted">Faculty: ramesh.kumar@sece.edu / faculty123</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
