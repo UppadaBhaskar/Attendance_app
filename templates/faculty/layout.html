@@ -1,21 +1,30 @@
 {% extends "base.html" %}
 {% block body %}
-<header class="top-bar">
-  <div class="brand">
-    <span class="logo-box small">🎓</span>
-    <div>
-      <strong>SECE</strong>
-      <span class="muted small">Faculty Portal</span>
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="logo-box small">🎓</span>
+      <div><strong>SECE</strong><br><span class="small" style="color:#a5b4fc;">Faculty</span></div>
     </div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('faculty_dashboard') }}" class="nav-link {% if request.endpoint == 'faculty_dashboard' %}active{% endif %}">Dashboard</a>
+      <a href="{{ url_for('faculty_mark_attendance') }}" class="nav-link {% if request.endpoint == 'faculty_mark_attendance' %}active{% endif %}">Mark Attendance</a>
+      <a href="{{ url_for('faculty_reports') }}" class="nav-link {% if request.endpoint == 'faculty_reports' %}active{% endif %}">Attendance Report</a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="small">{{ session.name }}</div>
+      <div class="small" style="color:#a5b4fc;">{{ session.email }}</div>
+      <a href="{{ url_for('logout') }}" class="nav-link" style="margin-top:8px;">Sign Out</a>
+    </div>
+  </aside>
+  <div class="main-area">
+    <header class="top-bar">
+      <span class="page-title">{% block page_title %}Faculty Portal{% endblock %}</span>
+    </header>
+    {% include '_flash.html' %}
+    <main class="page">
+      {% block faculty_content %}{% endblock %}
+    </main>
   </div>
-  <div class="top-right">
-    <span class="muted small hide-mobile">{{ session.name }}</span>
-    <span class="muted small hide-mobile">{{ session.email }}</span>
-    <a href="{{ url_for('logout') }}" class="btn btn-ghost">Sign Out</a>
-  </div>
-</header>
-{% include '_flash.html' %}
-<main class="page">
-  {% block faculty_content %}{% endblock %}
-</main>
+</div>
 {% endblock %}

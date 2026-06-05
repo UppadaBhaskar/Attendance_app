@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="logo-box small">🎓</span>
+      <div><strong>SECE</strong><br><span class="small" style="color:#a5b4fc;">Student</span></div>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('student_dashboard') }}" class="nav-link {% if request.endpoint == 'student_dashboard' %}active{% endif %}">Dashboard</a>
+      <a href="{{ url_for('student_attendance') }}" class="nav-link {% if request.endpoint == 'student_attendance' %}active{% endif %}">Attendance by Faculty</a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="small">{{ session.name }}</div>
+      <div class="small" style="color:#a5b4fc;">{{ session.email }}</div>
+      <a href="{{ url_for('logout') }}" class="nav-link" style="margin-top:8px;">Sign Out</a>
+    </div>
+  </aside>
+  <div class="main-area">
+    <header class="top-bar">
+      <span class="page-title">{% block page_title %}Student Portal{% endblock %}</span>
+    </header>
+    {% include '_flash.html' %}
+    <main class="page">
+      {% block student_content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% endblock %}

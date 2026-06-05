@@ -1,0 +1,64 @@
+{% extends "student/layout.html" %}
+{% block title %}Attendance by Faculty — SECE{% endblock %}
+{% block student_content %}
+<h2>Attendance by Faculty</h2>
+<p class="muted">Semester attendance summary</p>
+
+{% if summary %}
+<div class="card">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Faculty</th>
+        <th class="text-right">Total</th>
+        <th class="text-right">Attended</th>
+        <th class="text-right">Absent</th>
+        <th class="text-right">%</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>{{ summary.faculty_name }}</td>
+        <td class="text-right">{{ summary.total }}</td>
+        <td class="text-right text-green">{{ summary.present }}</td>
+        <td class="text-right text-red">{{ summary.absent }}</td>
+        <td class="text-right">
+          <strong class="{% if summary.percent >= 75 %}text-green{% else %}text-red{% endif %}">{{ summary.percent }}%</strong>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="margin-top: 20px;">
+  <div class="card-header">
+    <h3>Attendance Log — {{ faculty.name }}</h3>
+    <p class="muted small">{{ summary.percent }}% ({{ summary.present }}/{{ summary.total }})</p>
+  </div>
+  <table class="data-table">
+    <thead>
+      <tr><th>#</th><th>Date</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      {% for r in records %}
+      <tr>
+        <td>{{ loop.revindex }}</td>
+        <td>{{ r.attendance_date }}</td>
+        <td>
+          {% if r.status == 'present' %}
+          <span class="pill pill-green">Present</span>
+          {% else %}
+          <span class="pill pill-red">Absent</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3" class="muted">No attendance records yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card pad"><p class="muted">No faculty configured.</p></div>
+{% endif %}
+{% endblock %}

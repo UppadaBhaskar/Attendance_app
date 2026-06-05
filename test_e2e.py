@@ -45,7 +45,7 @@ today = str(date.today())
 status_key = "status_" + str(stu["id"])
 
 r = faculty_client.post(
-    "/faculty/dashboard",
+    "/faculty/mark-attendance",
     data={"mark_date": today, status_key: "present"},
     follow_redirects=True,
 )

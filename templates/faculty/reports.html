@@ -1,0 +1,37 @@
+{% extends "faculty/layout.html" %}
+{% block title %}Attendance Report — SECE{% endblock %}
+{% block faculty_content %}
+<h2>Attendance Report</h2>
+<p class="muted">Report for <strong>{{ faculty.name }}</strong> · percentage only</p>
+
+<div class="card">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Student</th>
+        <th>Roll No</th>
+        <th class="text-right">Total</th>
+        <th class="text-right">Present</th>
+        <th class="text-right">Absent</th>
+        <th class="text-right">%</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in report %}
+      <tr>
+        <td>{{ row.student.name }}</td>
+        <td class="mono">{{ row.student.roll_no }}</td>
+        <td class="text-right">{{ row.total }}</td>
+        <td class="text-right text-green">{{ row.present }}</td>
+        <td class="text-right text-red">{{ row.absent }}</td>
+        <td class="text-right">
+          <strong class="{% if row.percent >= 75 %}text-green{% else %}text-red{% endif %}">{{ row.percent }}%</strong>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="muted">No students.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

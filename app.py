@@ -51,6 +51,96 @@ def attendance_percent(student_id, faculty_id):
     return total, present, round((present / total) * 100)
 
 
+def student_summary(faculty):
+    total, present, percent = attendance_percent(session["user_id"], faculty["id"])
+    return {
+        "faculty_name": faculty["name"],
+        "total": total,
+        "present": present,
+        "absent": total - present,
+        "percent": percent,
+    }
+
+
+def faculty_dashboard_stats(faculty_id):
+    student_count = db.query("SELECT COUNT(*) AS c FROM students", fetchone=True)["c"]
+    session_count = db.query(
+        "SELECT COUNT(DISTINCT attendance_date) AS c FROM attendance WHERE faculty_id = %s",
+        (faculty_id,),
+        fetchone=True,
+    )["c"]
+    shortage_row = db.query(
+        """
+        SELECT COUNT(*) AS c FROM (
+            SELECT s.id,
+                   ROUND(100.0 * SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END)
+                         / NULLIF(COUNT(a.id), 0)) AS pct
+            FROM students s
+            LEFT JOIN attendance a ON a.student_id = s.id AND a.faculty_id = %s
+            GROUP BY s.id
+            HAVING COUNT(a.id) > 0 AND pct < %s
+        ) AS below_threshold
+        """,
+        (faculty_id, SHORTAGE_THRESHOLD),
+        fetchone=True,
+    )
+    shortage = shortage_row["c"] if shortage_row else 0
+    return student_count, session_count, shortage
+
+
+def faculty_report_rows(faculty_id):
+    students = db.query("SELECT * FROM students ORDER BY roll_no", fetchall=True)
+    report = []
+    for student in students:
+        total, present, percent = attendance_percent(student["id"], faculty_id)
+        report.append({
+            "student": student,
+            "total": total,
+            "present": present,
+            "absent": total - present,
+            "percent": percent,
+        })
+    return report
+
+
+def faculty_marks_for_date(faculty_id, mark_date):
+    marks = {}
+    rows = db.query(
+        "SELECT student_id, status FROM attendance WHERE faculty_id = %s AND attendance_date = %s",
+        (faculty_id, mark_date),
+        fetchall=True,
+    )
+    for row in rows:
+        marks[row["student_id"]] = row["status"]
+    return marks
+
+
+def save_attendance_for_date(faculty_id, mark_date):
+    students = db.query("SELECT * FROM students ORDER BY roll_no", fetchall=True)
+    for student in students:
+        status = request.form.get(f"status_{student['id']}", "absent")
+        if status not in ("present", "absent"):
+            status = "absent"
+        existing = db.query(
+            """
+            SELECT id FROM attendance
+            WHERE student_id = %s AND faculty_id = %s AND attendance_date = %s
+            """,
+            (student["id"], faculty_id, mark_date),
+            fetchone=True,
+        )
+        if existing:
+            db.execute("UPDATE attendance SET status = %s WHERE id = %s", (status, existing["id"]))
+        else:
+            db.execute(
+                """
+                INSERT INTO attendance (student_id, faculty_id, attendance_date, status)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (student["id"], faculty_id, mark_date, status),
+            )
+
+
 @app.route("/")
 def index():
     if "user_id" not in session:
@@ -150,23 +240,16 @@ def student_dashboard():
         flash("Faculty not configured.", "error")
         return render_template("student/dashboard.html", summary=None)
 
-    total, present, percent = attendance_percent(session["user_id"], faculty["id"])
-    summary = {
-        "faculty_name": faculty["name"],
-        "total": total,
-        "present": present,
-        "absent": total - present,
-        "percent": percent,
-    }
-    return render_template("student/dashboard.html", summary=summary)
+    return render_template("student/dashboard.html", summary=student_summary(faculty))
 
 
-@app.route("/student/detail")
+@app.route("/student/attendance")
 @login_required("student")
-def student_detail():
+def student_attendance():
     faculty = get_faculty()
     if not faculty:
-        return redirect(url_for("student_dashboard"))
+        flash("Faculty not configured.", "error")
+        return render_template("student/attendance.html", summary=None, faculty=None, records=[])
 
     records = db.query(
         """
@@ -178,145 +261,83 @@ def student_detail():
         (session["user_id"], faculty["id"]),
         fetchall=True,
     )
-    total, present, percent = attendance_percent(session["user_id"], faculty["id"])
     return render_template(
-        "student/detail.html",
+        "student/attendance.html",
         faculty=faculty,
+        summary=student_summary(faculty),
         records=records,
-        percent=percent,
-        total=total,
-        present=present,
     )
 
 
-def render_faculty_page(mark_date=None):
-    """Build single faculty page — all data from MySQL."""
+@app.route("/student/detail")
+@login_required("student")
+def student_detail():
+    return redirect(url_for("student_attendance"))
+
+
+@app.route("/faculty/dashboard")
+@login_required("faculty")
+def faculty_dashboard():
     faculty = get_faculty()
-    mark_date = mark_date or str(date.today())
-    students = db.query("SELECT * FROM students ORDER BY roll_no", fetchall=True)
-
-    marks = {}
-    rows = db.query(
-        "SELECT student_id, status FROM attendance WHERE faculty_id = %s AND attendance_date = %s",
-        (faculty["id"], mark_date),
-        fetchall=True,
-    )
-    for row in rows:
-        marks[row["student_id"]] = row["status"]
-
-    report = []
-    for student in students:
-        total, present, percent = attendance_percent(student["id"], faculty["id"])
-        report.append({
-            "student": student,
-            "total": total,
-            "present": present,
-            "absent": total - present,
-            "percent": percent,
-        })
-
-    student_count = db.query("SELECT COUNT(*) AS c FROM students", fetchone=True)["c"]
-    session_count = db.query(
-        "SELECT COUNT(DISTINCT attendance_date) AS c FROM attendance WHERE faculty_id = %s",
-        (faculty["id"],),
-        fetchone=True,
-    )["c"]
-    shortage_row = db.query(
-        """
-        SELECT COUNT(*) AS c FROM (
-            SELECT s.id,
-                   ROUND(100.0 * SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END)
-                         / NULLIF(COUNT(a.id), 0)) AS pct
-            FROM students s
-            LEFT JOIN attendance a ON a.student_id = s.id AND a.faculty_id = %s
-            GROUP BY s.id
-            HAVING COUNT(a.id) > 0 AND pct < %s
-        ) AS below_threshold
-        """,
-        (faculty["id"], SHORTAGE_THRESHOLD),
-        fetchone=True,
-    )
-    shortage = shortage_row["c"] if shortage_row else 0
-
+    student_count, session_count, shortage = faculty_dashboard_stats(faculty["id"])
     return render_template(
         "faculty/dashboard.html",
         faculty=faculty,
-        students=students,
-        marks=marks,
-        mark_date=mark_date,
-        today=str(date.today()),
-        report=report,
         student_count=student_count,
         session_count=session_count,
         shortage=shortage,
     )
 
 
-@app.route("/faculty/dashboard", methods=["GET", "POST"])
+@app.route("/faculty/mark-attendance", methods=["GET", "POST"])
 @login_required("faculty")
-def faculty_dashboard():
+def faculty_mark_attendance():
     faculty = get_faculty()
     mark_date = request.form.get("mark_date") or request.args.get("date") or str(date.today())
 
     if request.method == "POST":
         mark_date = request.form.get("mark_date", str(date.today()))
-        students = db.query("SELECT * FROM students ORDER BY roll_no", fetchall=True)
-        for student in students:
-            status = request.form.get(f"status_{student['id']}", "absent")
-            if status not in ("present", "absent"):
-                status = "absent"
-            existing = db.query(
-                """
-                SELECT id FROM attendance
-                WHERE student_id = %s AND faculty_id = %s AND attendance_date = %s
-                """,
-                (student["id"], faculty["id"], mark_date),
-                fetchone=True,
-            )
-            if existing:
-                db.execute("UPDATE attendance SET status = %s WHERE id = %s", (status, existing["id"]))
-            else:
-                db.execute(
-                    """
-                    INSERT INTO attendance (student_id, faculty_id, attendance_date, status)
-                    VALUES (%s, %s, %s, %s)
-                    """,
-                    (student["id"], faculty["id"], mark_date, status),
-                )
+        save_attendance_for_date(faculty["id"], mark_date)
         flash(f"Attendance saved for {mark_date}.", "success")
-        return redirect(url_for("faculty_dashboard", date=mark_date))
+        return redirect(url_for("faculty_mark_attendance", date=mark_date))
 
-    return render_faculty_page(mark_date)
+    students = db.query("SELECT * FROM students ORDER BY roll_no", fetchall=True)
+    marks = faculty_marks_for_date(faculty["id"], mark_date)
+    return render_template(
+        "faculty/mark_attendance.html",
+        faculty=faculty,
+        students=students,
+        marks=marks,
+        mark_date=mark_date,
+        today=str(date.today()),
+    )
 
 
-@app.route("/faculty/mark-attendance", methods=["GET", "POST"])
+@app.route("/faculty/reports")
 @login_required("faculty")
-def faculty_mark_attendance():
-    date_arg = request.args.get("date") or request.form.get("mark_date")
-    if date_arg:
-        return redirect(url_for("faculty_dashboard", date=date_arg))
-    return redirect(url_for("faculty_dashboard"))
+def faculty_reports():
+    faculty = get_faculty()
+    return render_template(
+        "faculty/reports.html",
+        faculty=faculty,
+        report=faculty_report_rows(faculty["id"]),
+    )
 
-
+    
 @app.route("/faculty/students/delete/<int:student_id>", methods=["POST"])
 @login_required("faculty")
 def faculty_delete_student(student_id):
     student = db.query("SELECT id FROM students WHERE id = %s", (student_id,), fetchone=True)
     if not student:
         flash("Student not found.", "error")
-        return redirect(url_for("faculty_dashboard"))
+        return redirect(url_for("faculty_mark_attendance"))
+
     db.execute("DELETE FROM students WHERE id = %s", (student_id,))
     flash("Student deleted.", "success")
     mark_date = request.form.get("mark_date") or request.args.get("date")
     if mark_date:
-        return redirect(url_for("faculty_dashboard", date=mark_date))
-    return redirect(url_for("faculty_dashboard"))
-
-
-@app.route("/faculty/reports")
-@login_required("faculty")
-def faculty_reports():
-    return redirect(url_for("faculty_dashboard") + "#reports")
+        return redirect(url_for("faculty_mark_attendance", date=mark_date))
+    return redirect(url_for("faculty_mark_attendance"))
 
 
 if __name__ == "__main__":
